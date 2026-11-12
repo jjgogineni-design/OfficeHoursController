@@ -42,6 +42,13 @@ class OfficeHoursControllerTest {
     }
 
     @Test
+    void introPrintsBeforeFirstPrompt() {
+        String out = run("quit\n");
+        assertTrue(out.startsWith("Welcome to Next Up, the CS 2114 office hours line.\n"
+                + "Type help to see the commands.\n> "));
+    }
+
+    @Test
     void studentCannotSkipAhead() {
         String out = run("join\nAnn\nx\nnext\npeek\nquit\n");
         assertTrue(out.contains("Only the TA can call the next student."));
@@ -69,6 +76,23 @@ class OfficeHoursControllerTest {
     void cancelBacksOutOfJoin() {
         String out = run("join\ncancel\nquit\n");
         assertTrue(out.contains("Join cancelled."));
+        assertTrue(model.isEmpty());
+    }
+
+    @Test
+    void tenThousandCharacterNameAndTopicAreRejected() {
+        String big = "a".repeat(10_000);
+        String out = run("join\n" + big + "\nAnn\n" + big + "\nreal topic\nquit\n");
+        assertTrue(out.contains("Name must be 30 characters or fewer."));
+        assertTrue(out.contains("Topic must be 80 characters or fewer."));
+        assertTrue(out.contains("You're #1 in line."));
+        assertEquals(1, model.lineSize());
+    }
+
+    @Test
+    void capsAndSpacesAroundNextStillWork() {
+        String out = run("join\nAnn\nx\nta\n2114\n  NEXT \nquit\n");
+        assertTrue(out.contains("Next up: Ann (x)"));
         assertTrue(model.isEmpty());
     }
 

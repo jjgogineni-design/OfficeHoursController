@@ -22,6 +22,8 @@ public class OfficeHoursController {
 
     /** Loops until quit or end of input. */
     public void run() {
+        view.showInfo("Welcome to Next Up, the CS 2114 office hours line.");
+        view.showInfo("Type help to see the commands.");
         running = true;
         while (running) {
             String prompt = model.isTaMode() ? "[TA] > " : "> ";
