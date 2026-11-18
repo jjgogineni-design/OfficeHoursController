@@ -14,6 +14,8 @@ public class OfficeHours {
     private final String taPin;
     private final Clock clock;
     private boolean taMode;
+    /** Ticket from the most recent successful join at this keyboard, or null. */
+    private Ticket lastJoined;
 
     public OfficeHours(String taPin, Clock clock) {
         if (taPin == null || taPin.isBlank() || clock == null) {
@@ -83,7 +85,9 @@ public class OfficeHours {
         if (line.size() >= MAX_LINE) {
             throw new IllegalStateException("Line is full.");
         }
-        line.enqueue(new Ticket(cleanedName, cleanedTopic, clock.instant()));
+        Ticket ticket = new Ticket(cleanedName, cleanedTopic, clock.instant());
+        line.enqueue(ticket);
+        lastJoined = ticket;
         return line.size();
     }
 
@@ -110,25 +114,54 @@ public class OfficeHours {
     }
 
     /**
-     * Removes the named student's ticket from anywhere in the line. Everyone
-     * behind them moves up one spot. Works in student and TA mode, so a TA
-     * can also clear a no-show.
+     * Student self-removal. The console can't tell who is typing, so "you"
+     * is the student from the most recent successful join at this keyboard.
+     * Their ticket comes out wherever it is, and everyone behind them moves
+     * up one spot.
+     *
+     * @return the ticket that was removed
+     * @throws IllegalStateException "You're not in line." if nobody has
+     *         joined here, or that student already left, was called, or was
+     *         removed by the TA
+     */
+    public Ticket leave() {
+        Ticket mine = lastJoined;
+        // Ticket has no equals(), so remove() matches this exact object.
+        if (mine == null || !line.remove(mine)) {
+            throw new IllegalStateException("You're not in line.");
+        }
+        lastJoined = null;
+        return mine;
+    }
+
+    /**
+     * TA only. Removes the named student's ticket from anywhere in the line,
+     * for example a no-show. Everyone behind them moves up one spot.
      *
      * @param name the student's name (case and spacing ignored)
+     * @return the ticket that was removed
+     * @throws IllegalStateException in student mode
      * @throws IllegalArgumentException the same messages as cleanName for a
      *         null, blank, too long, or badly formed name, or
-     *         "You're not in line." if no ticket matches
+     *         "That student isn't in line." if no ticket matches
      */
-    public void leave(String name) {
+    public Ticket removeStudent(String name) {
+        if (!taMode) {
+            throw new IllegalStateException("Only the TA can remove a student by name.");
+        }
         String cleanedName = cleanName(name);
         int position = getPosition(cleanedName);
         if (position == -1) {
-            throw new IllegalArgumentException("You're not in line.");
+            throw new IllegalArgumentException("That student isn't in line.");
         }
         // getLine() copies the array but hands back the same Ticket objects,
         // so remove() finds this exact ticket by identity.
         Ticket ticket = getLine()[position - 1];
         line.remove(ticket);
+        if (ticket == lastJoined) {
+            lastJoined = null;
+        }
+        return ticket;
     }
 
     /** A new array of all tickets in order. Does not change the line. */

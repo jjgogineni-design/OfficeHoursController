@@ -92,22 +92,25 @@ class ConsoleViewTest {
     }
 
     @Test
-    void helpListsLeaveInBothModes() {
+    void helpListsLeaveForStudentsAndTheTaVersionOnlyInTaMode() {
         ConsoleView v = viewWith("");
         v.showHelp(false);
-        assertTrue(printed().contains("leave"));
+        assertTrue(printed().contains("leave    Give up your spot"));
+        assertFalse(printed().contains("removes that student"));
         bytes.reset();
         v.showHelp(true);
-        assertTrue(printed().contains("leave"));
+        assertTrue(printed().contains("leave    Give up your spot"));
+        assertTrue(printed().contains("leave    Asks for a name and removes that student"));
     }
 
     @Test
-    void showLineAfterALeaveRenumbersFromWhatItIsGiven() {
+    void showLineAfterARemovalRenumbersFromWhatItIsGiven() {
         OfficeHours oh = new OfficeHours("1", Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
         oh.join("Ann", "a");
         oh.join("Ben", "b");
         oh.join("Cy", "c");
-        oh.leave("Ben");
+        oh.enterTaMode("1");
+        oh.removeStudent("Ben");
         ConsoleView v = viewWith("");
         v.showLine(oh.getLine());
         assertEquals("1. Ann (a)\n2. Cy (c)\n", printed());

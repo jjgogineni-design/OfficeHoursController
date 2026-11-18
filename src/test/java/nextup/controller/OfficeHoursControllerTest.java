@@ -128,58 +128,85 @@ class OfficeHoursControllerTest {
     // ---- leave (the Deliverable 4 change feature) ----
 
     @Test
-    void leaveReachesTheModelAndLineShowsEveryoneMovedUp() {
-        String out = run("join\nAnn\na\njoin\nBen\nb\njoin\nCy\nc\n"
-                + "leave\nben\nline\nquit\n");
-        assertTrue(out.contains("You left the line."));
-        assertTrue(out.contains("1. Ann (a)\n2. Cy (c)\n"));
-        assertEquals(2, model.lineSize());
+    void studentLeaveRemovesWhoeverJustJoinedWithoutAskingForAName() {
+        String out = run("join\nAnn\na\njoin\nBen\nb\nleave\nline\nquit\n");
+        assertTrue(out.contains("Ben, you left the line."));
+        assertFalse(out.contains("Name to remove"));
+        assertTrue(out.contains("1. Ann (a)\n> "));
+        assertEquals(1, model.lineSize());
         assertEquals(-1, model.getPosition("Ben"));
     }
 
     @Test
-    void leaveWhenNotInLineShowsMessageAndKeepsRunning() {
-        String out = run("join\nAnn\na\nleave\nZed\nline\nquit\n");
+    void studentLeaveWithNobodyJoinedShowsNotInLine() {
+        String out = run("leave\nquit\n");
         assertTrue(out.contains("You're not in line."));
+        assertTrue(out.contains("Session ended."));
+    }
+
+    @Test
+    void studentLeaveAfterBeingCalledShowsNotInLine() {
+        String out = run("join\nAnn\na\nta\n2114\nnext\nstudent\nleave\nquit\n");
+        assertTrue(out.contains("Next up: Ann (a)"));
+        assertTrue(out.contains("You're not in line."));
+        assertTrue(model.isEmpty());
+    }
+
+    @Test
+    void taLeaveAsksForANameAndRemovesThatStudent() {
+        String out = run("join\nAnn\na\njoin\nBen\nb\njoin\nCy\nc\n"
+                + "ta\n2114\nleave\nben\nline\nquit\n");
+        assertTrue(out.contains("Name to remove (or cancel): "));
+        assertTrue(out.contains("Removed Ben from the line."));
+        assertTrue(out.contains("1. Ann (a)\n2. Cy (c)\n"));
+        assertEquals(2, model.lineSize());
+    }
+
+    @Test
+    void taLeaveForANameNotInLineShowsMessageAndKeepsRunning() {
+        String out = run("join\nAnn\na\nta\n2114\nleave\nZed\nline\nquit\n");
+        assertTrue(out.contains("That student isn't in line."));
         assertTrue(out.contains("1. Ann (a)"));
         assertTrue(out.contains("Session ended."));
         assertEquals(1, model.lineSize());
     }
 
     @Test
-    void leaveRepromptsOnBadNamesThenWorks() {
-        String out = run("join\nAnn\na\nleave\n   \nAnn123\n" + "a".repeat(10_000) + "\n  ANN \nquit\n");
+    void taLeaveRepromptsOnBadNamesThenWorks() {
+        String out = run("join\nAnn\na\nta\n2114\nleave\n   \nAnn123\n"
+                + "a".repeat(10_000) + "\n  ANN \nquit\n");
         assertTrue(out.contains("Name can't be blank."));
         assertTrue(out.contains("Names can only use letters, spaces, hyphens, and apostrophes."));
         assertTrue(out.contains("Name must be 30 characters or fewer."));
-        assertTrue(out.contains("You left the line."));
+        assertTrue(out.contains("Removed Ann from the line."));
         assertTrue(model.isEmpty());
     }
 
     @Test
-    void cancelAtLeavePromptShowsLeaveMessageNotJoinMessage() {
-        String out = run("join\nAnn\na\nleave\ncancel\nquit\n");
-        assertTrue(out.contains("Leave cancelled."));
+    void cancelAtTaLeavePromptShowsRemoveMessageNotJoinMessage() {
+        String out = run("join\nAnn\na\nta\n2114\nleave\ncancel\nquit\n");
+        assertTrue(out.contains("Remove cancelled."));
         assertFalse(out.contains("Join cancelled."));
         assertEquals(1, model.lineSize());
     }
 
     @Test
-    void endOfInputDuringLeaveIsHandled() {
-        assertDoesNotThrow(() -> run("join\nAnn\na\nleave\n"));
+    void endOfInputDuringTaLeaveIsHandled() {
+        assertDoesNotThrow(() -> run("join\nAnn\na\nta\n2114\nleave\n"));
         assertEquals(1, model.lineSize());
     }
 
     @Test
-    void leaveAppearsInHelp() {
-        String out = run("help\nquit\n");
-        assertTrue(out.contains("leave"));
+    void leaveAppearsInHelpInBothModes() {
+        String out = run("help\nta\n2114\nhelp\nquit\n");
+        assertTrue(out.contains("leave    Give up your spot"));
+        assertTrue(out.contains("leave    Asks for a name and removes that student"));
     }
 
     @Test
-    void taCanRemoveANoShowThenCallsTheRightStudent() {
+    void taRemovesANoShowThenCallsTheRightStudent() {
         String out = run("join\nAnn\na\njoin\nBen\nb\nta\n2114\nleave\nAnn\nnext\nquit\n");
-        assertTrue(out.contains("You left the line."));
+        assertTrue(out.contains("Removed Ann from the line."));
         assertTrue(out.contains("Next up: Ben (b)"));
         assertTrue(model.isEmpty());
     }

@@ -95,7 +95,7 @@ public class ConsoleView implements OfficeHoursView {
         out.println("Commands:");
         out.println("  join     Get in line");
         out.println("  line     See who is waiting");
-        out.println("  leave    Give up your spot in line");
+        out.println("  leave    Give up your spot (whoever joined here most recently)");
         out.println("  ta       Enter TA mode (PIN required)");
         out.println("  help     Show this list");
         out.println("  quit     End the session");
@@ -103,6 +103,7 @@ public class ConsoleView implements OfficeHoursView {
             out.println("TA commands:");
             out.println("  peek     See who is next without removing them");
             out.println("  next     Call the next student");
+            out.println("  leave    Asks for a name and removes that student");
             out.println("  student  Return to student mode");
         }
     }

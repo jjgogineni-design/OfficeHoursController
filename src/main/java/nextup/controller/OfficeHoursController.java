@@ -2,6 +2,7 @@ package nextup.controller;
 
 import nextup.model.AlreadyInLineException;
 import nextup.model.OfficeHours;
+import nextup.model.Ticket;
 import nextup.view.OfficeHoursView;
 
 /** Reads one command at a time, calls the model, and pushes the result to the view. */
@@ -48,7 +49,11 @@ public class OfficeHoursController {
                     view.showLine(model.getLine());
                     break;
                 case "leave":
-                    doLeave();
+                    if (model.isTaMode()) {
+                        doRemove();
+                    } else {
+                        doLeave();
+                    }
                     break;
                 case "peek":
                     view.showNextUp(model.peekNext());
@@ -93,14 +98,20 @@ public class OfficeHoursController {
         view.showJoined(model.join(name, topic));
     }
 
-    /** Asks for a name and removes that student's spot. "Not in line" reaches showError. */
+    /** Student mode: removes whoever joined most recently here. No prompt. */
     private void doLeave() {
-        String name = promptUntilValid("Name (or cancel): ", true, "Leave cancelled.");
+        Ticket removed = model.leave();
+        view.showInfo(removed.getName() + ", you left the line.");
+    }
+
+    /** TA mode: asks for a name and removes that student. */
+    private void doRemove() {
+        String name = promptUntilValid("Name to remove (or cancel): ", true, "Remove cancelled.");
         if (name == null) {
             return;
         }
-        model.leave(name);
-        view.showInfo("You left the line.");
+        Ticket removed = model.removeStudent(name);
+        view.showInfo("Removed " + removed.getName() + " from the line.");
     }
 
     /**

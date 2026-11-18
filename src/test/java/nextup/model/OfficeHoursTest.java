@@ -211,7 +211,7 @@ class OfficeHoursTest {
         assertDoesNotThrow(() -> oh.exitTaMode());
     }
 
-    // ---- leave (the Deliverable 4 change feature) ----
+    // ---- leave and removeStudent (the Deliverable 4 change feature) ----
 
     private void joinAll(String... names) {
         for (String n : names) {
@@ -228,127 +228,192 @@ class OfficeHoursTest {
         return result;
     }
 
+    // leave(): a student removes themselves, no name needed
+
     @Test
-    void leaveFromMiddleMovesLaterStudentsUp() {
-        joinAll("Ann", "Ben", "Cy");
-        oh.leave("Ben");
-        assertArrayEquals(new String[] {"Ann", "Cy"}, names());
-        assertEquals(2, oh.getPosition("Cy"));
-        assertEquals(-1, oh.getPosition("Ben"));
-        assertEquals(2, oh.lineSize());
+    void leaveRemovesWhoeverJustJoined() {
+        joinAll("Ann", "Ben");
+        assertEquals("Ben", oh.leave().getName());
+        assertArrayEquals(new String[] {"Ann"}, names());
     }
 
     @Test
-    void leaveIgnoresCaseAndSpacing() {
+    void leaveAfterTaCalledTheOthersRemovesTheHeadAndTailCorrectly() {
+        joinAll("Ann", "Ben");
+        taOn();
+        oh.callNext();
+        oh.exitTaMode();
+        assertEquals("Ben", oh.leave().getName());
+        assertTrue(oh.isEmpty());
+        assertEquals(1, oh.join("Cy", "x"));
+        taOn();
+        assertEquals("Cy", oh.peekNext().getName());
+    }
+
+    @Test
+    void leaveWithNobodyJoinedThrows() {
+        assertEquals("You're not in line.",
+                assertThrows(IllegalStateException.class, () -> oh.leave()).getMessage());
+    }
+
+    @Test
+    void leaveTwiceThrowsTheSecondTimeAndLineIsUnchanged() {
+        joinAll("Ann", "Ben");
+        oh.leave();
+        assertThrows(IllegalStateException.class, () -> oh.leave());
+        assertArrayEquals(new String[] {"Ann"}, names());
+    }
+
+    @Test
+    void leaveAfterBeingCalledThrows() {
+        joinAll("Ann");
+        taOn();
+        oh.callNext();
+        oh.exitTaMode();
+        assertThrows(IllegalStateException.class, () -> oh.leave());
+        assertTrue(oh.isEmpty());
+    }
+
+    @Test
+    void leaveAfterTaRemovedYouThrows() {
+        joinAll("Ann", "Ben");
+        taOn();
+        oh.removeStudent("Ben");
+        oh.exitTaMode();
+        assertThrows(IllegalStateException.class, () -> oh.leave());
+        assertArrayEquals(new String[] {"Ann"}, names());
+    }
+
+    @Test
+    void failedJoinsDoNotChangeWhoLeaves() {
+        joinAll("Ann", "Ben");
+        assertThrows(AlreadyInLineException.class, () -> oh.join("ann", "x"));
+        assertThrows(IllegalArgumentException.class, () -> oh.join("", "x"));
+        assertEquals("Ben", oh.leave().getName());
+        assertArrayEquals(new String[] {"Ann"}, names());
+    }
+
+    @Test
+    void eachNewJoinCanLeaveInTurn() {
+        joinAll("Ann", "Ben");
+        oh.leave();
+        joinAll("Cy");
+        assertEquals("Cy", oh.leave().getName());
+        assertArrayEquals(new String[] {"Ann"}, names());
+    }
+
+    // removeStudent(name): TA only
+
+    @Test
+    void removeStudentFromMiddleMovesLaterStudentsUp() {
+        joinAll("Ann", "Ben", "Cy");
+        taOn();
+        assertEquals("Ben", oh.removeStudent("Ben").getName());
+        assertArrayEquals(new String[] {"Ann", "Cy"}, names());
+        assertEquals(2, oh.getPosition("Cy"));
+        assertEquals(-1, oh.getPosition("Ben"));
+    }
+
+    @Test
+    void removeStudentIgnoresCaseAndSpacing() {
         joinAll("Ann Lee", "Ben");
-        oh.leave("  ann   LEE ");
+        taOn();
+        oh.removeStudent("  ann   LEE ");
         assertArrayEquals(new String[] {"Ben"}, names());
     }
 
     @Test
-    void leaveFromHeadMeansTaCallsTheNewHead() {
+    void removeStudentHeadMeansTaCallsTheNewHead() {
         joinAll("Ann", "Ben");
-        oh.leave("Ann");
         taOn();
+        oh.removeStudent("Ann");
         assertEquals("Ben", oh.callNext().getName());
         assertTrue(oh.isEmpty());
     }
 
     @Test
-    void leaveFromTailThenJoinLandsAtTheBack() {
+    void removeStudentTailThenJoinLandsAtTheBack() {
         joinAll("Ann", "Ben", "Cy");
-        oh.leave("Cy");
+        taOn();
+        oh.removeStudent("Cy");
         assertEquals(3, oh.join("Dee", "x"));
         assertArrayEquals(new String[] {"Ann", "Ben", "Dee"}, names());
     }
 
     @Test
-    void lastStudentLeavesThenNewStudentIsFirst() {
+    void removeStudentOnlyStudentThenNewJoinIsFirst() {
         joinAll("Ann");
-        oh.leave("Ann");
+        taOn();
+        oh.removeStudent("Ann");
         assertTrue(oh.isEmpty());
         assertEquals(1, oh.join("Ben", "x"));
-        taOn();
         assertEquals("Ben", oh.peekNext().getName());
     }
 
     @Test
-    void leaveThenRejoinGoesToTheBackWithTheNewTopic() {
+    void removeStudentInStudentModeThrowsAndLineIsUnchanged() {
         joinAll("Ann", "Ben");
-        oh.leave("Ann");
-        assertEquals(2, oh.join("Ann", "new topic"));
-        assertArrayEquals(new String[] {"Ben", "Ann"}, names());
-        assertEquals("new topic", oh.getLine()[1].getTopic());
-    }
-
-    @Test
-    void leaveWorksInTaModeToClearANoShow() {
-        joinAll("Ann", "Ben");
-        taOn();
-        oh.leave("Ann");
-        assertEquals("Ben", oh.peekNext().getName());
-        assertTrue(oh.isTaMode());
-    }
-
-    @Test
-    void leaveWhenNotInLineThrowsAndLineIsUnchanged() {
-        joinAll("Ann", "Ben");
-        assertEquals("You're not in line.",
-                assertThrows(IllegalArgumentException.class, () -> oh.leave("Zed")).getMessage());
+        assertEquals("Only the TA can remove a student by name.",
+                assertThrows(IllegalStateException.class,
+                        () -> oh.removeStudent("Ann")).getMessage());
         assertArrayEquals(new String[] {"Ann", "Ben"}, names());
     }
 
     @Test
-    void leaveOnEmptyLineThrowsNotInLine() {
-        assertEquals("You're not in line.",
-                assertThrows(IllegalArgumentException.class, () -> oh.leave("Ann")).getMessage());
-        assertTrue(oh.isEmpty());
-    }
-
-    @Test
-    void leaveTwiceSecondTimeIsNotInLine() {
+    void removeStudentNotInLineThrowsAndLineIsUnchanged() {
+        taOn();
+        assertEquals("That student isn't in line.",
+                assertThrows(IllegalArgumentException.class,
+                        () -> oh.removeStudent("Ann")).getMessage());
         joinAll("Ann", "Ben");
-        oh.leave("Ann");
-        assertThrows(IllegalArgumentException.class, () -> oh.leave("ann"));
-        assertEquals(1, oh.lineSize());
+        assertThrows(IllegalArgumentException.class, () -> oh.removeStudent("Zed"));
+        assertArrayEquals(new String[] {"Ann", "Ben"}, names());
     }
 
     @Test
-    void leaveRejectsNullBlankLongAndBadCharacters() {
+    void removeStudentRejectsNullBlankLongAndBadCharacters() {
         joinAll("Ann");
+        taOn();
         assertEquals("Name can't be blank.",
-                assertThrows(IllegalArgumentException.class, () -> oh.leave(null)).getMessage());
+                assertThrows(IllegalArgumentException.class,
+                        () -> oh.removeStudent(null)).getMessage());
         assertEquals("Name can't be blank.",
-                assertThrows(IllegalArgumentException.class, () -> oh.leave("   ")).getMessage());
+                assertThrows(IllegalArgumentException.class,
+                        () -> oh.removeStudent("   ")).getMessage());
         assertEquals("Name must be 30 characters or fewer.",
                 assertThrows(IllegalArgumentException.class,
-                        () -> oh.leave("a".repeat(10_000))).getMessage());
-        assertThrows(IllegalArgumentException.class, () -> oh.leave("Ann\u001B[2J"));
+                        () -> oh.removeStudent("a".repeat(10_000))).getMessage());
+        assertThrows(IllegalArgumentException.class, () -> oh.removeStudent("Ann\u001B[2J"));
         assertEquals(1, oh.lineSize());
     }
 
     @Test
-    void orderHoldsAcrossInterleavedJoinsCallsAndLeaves() {
+    void orderHoldsAcrossInterleavedJoinsCallsAndRemovals() {
         joinAll("Ann", "Ben");
         taOn();
         assertEquals("Ann", oh.callNext().getName());
         joinAll("Cy", "Dee");
-        oh.leave("Cy");
+        oh.removeStudent("Cy");
         joinAll("Eve");
-        assertArrayEquals(new String[] {"Ben", "Dee", "Eve"}, names());
+        oh.exitTaMode();
+        assertEquals("Eve", oh.leave().getName());
+        joinAll("Fay");
+        assertArrayEquals(new String[] {"Ben", "Dee", "Fay"}, names());
+        taOn();
         assertEquals("Ben", oh.callNext().getName());
         assertEquals("Dee", oh.callNext().getName());
-        assertEquals("Eve", oh.callNext().getName());
+        assertEquals("Fay", oh.callNext().getName());
         assertTrue(oh.isEmpty());
     }
 
     @Test
-    void fullLineHasRoomAgainAfterSomeoneLeaves() {
+    void fullLineHasRoomAgainAfterARemoval() {
         for (int i = 0; i < OfficeHours.MAX_LINE; i++) {
             oh.join(nameFor(i), "x");
         }
         assertThrows(IllegalStateException.class, () -> oh.join("Zed", "x"));
-        oh.leave(nameFor(10));
+        taOn();
+        oh.removeStudent(nameFor(10));
         assertEquals(OfficeHours.MAX_LINE, oh.join("Zed", "x"));
     }
 }
