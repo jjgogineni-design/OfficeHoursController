@@ -109,6 +109,28 @@ public class OfficeHours {
         return line.dequeue();
     }
 
+    /**
+     * Removes the named student's ticket from anywhere in the line. Everyone
+     * behind them moves up one spot. Works in student and TA mode, so a TA
+     * can also clear a no-show.
+     *
+     * @param name the student's name (case and spacing ignored)
+     * @throws IllegalArgumentException the same messages as cleanName for a
+     *         null, blank, too long, or badly formed name, or
+     *         "You're not in line." if no ticket matches
+     */
+    public void leave(String name) {
+        String cleanedName = cleanName(name);
+        int position = getPosition(cleanedName);
+        if (position == -1) {
+            throw new IllegalArgumentException("You're not in line.");
+        }
+        // getLine() copies the array but hands back the same Ticket objects,
+        // so remove() finds this exact ticket by identity.
+        Ticket ticket = getLine()[position - 1];
+        line.remove(ticket);
+    }
+
     /** A new array of all tickets in order. Does not change the line. */
     public Ticket[] getLine() {
         Object[] raw = line.toArray();

@@ -76,6 +76,40 @@ public class LinkedQueue<T> {
         size = 0;
     }
 
+    /**
+     * Removes the first entry equal to the given one (head to tail) and
+     * returns whether anything was removed. Handles the head, the tail, the
+     * only node, and a middle node, and keeps the tail pointer correct.
+     *
+     * @param entry the entry to remove
+     * @return true if an entry was removed, false if none matched
+     * @throws IllegalArgumentException if entry is null
+     */
+    public boolean remove(T entry) {
+        if (entry == null) {
+            throw new IllegalArgumentException("Entry must not be null.");
+        }
+        Node<T> previous = null;
+        Node<T> current = head;
+        while (current != null) {
+            if (current.data.equals(entry)) {
+                if (previous == null) {
+                    head = current.next;       // removing the head
+                } else {
+                    previous.next = current.next;
+                }
+                if (current == tail) {
+                    tail = previous;           // removing the tail (null if it was the only node)
+                }
+                size--;
+                return true;
+            }
+            previous = current;
+            current = current.next;
+        }
+        return false;
+    }
+
     /** Returns a new array of entries from head to tail. The queue is unchanged. */
     public Object[] toArray() {
         Object[] result = new Object[size];

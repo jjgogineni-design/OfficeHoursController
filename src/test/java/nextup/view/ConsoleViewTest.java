@@ -92,6 +92,28 @@ class ConsoleViewTest {
     }
 
     @Test
+    void helpListsLeaveInBothModes() {
+        ConsoleView v = viewWith("");
+        v.showHelp(false);
+        assertTrue(printed().contains("leave"));
+        bytes.reset();
+        v.showHelp(true);
+        assertTrue(printed().contains("leave"));
+    }
+
+    @Test
+    void showLineAfterALeaveRenumbersFromWhatItIsGiven() {
+        OfficeHours oh = new OfficeHours("1", Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
+        oh.join("Ann", "a");
+        oh.join("Ben", "b");
+        oh.join("Cy", "c");
+        oh.leave("Ben");
+        ConsoleView v = viewWith("");
+        v.showLine(oh.getLine());
+        assertEquals("1. Ann (a)\n2. Cy (c)\n", printed());
+    }
+
+    @Test
     void constructorRejectsNulls() {
         assertThrows(IllegalArgumentException.class, () -> new ConsoleView(null, System.out));
         assertThrows(IllegalArgumentException.class, () -> new ConsoleView(new Scanner(""), null));

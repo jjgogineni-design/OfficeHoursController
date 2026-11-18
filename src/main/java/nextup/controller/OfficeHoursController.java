@@ -47,6 +47,9 @@ public class OfficeHoursController {
                 case "line":
                     view.showLine(model.getLine());
                     break;
+                case "leave":
+                    doLeave();
+                    break;
                 case "peek":
                     view.showNextUp(model.peekNext());
                     break;
@@ -79,23 +82,36 @@ public class OfficeHoursController {
     }
 
     private void doJoin() {
-        String name = promptUntilValid("Name (or cancel): ", true);
+        String name = promptUntilValid("Name (or cancel): ", true, "Join cancelled.");
         if (name == null) {
             return;
         }
-        String topic = promptUntilValid("Topic (or cancel): ", false);
+        String topic = promptUntilValid("Topic (or cancel): ", false, "Join cancelled.");
         if (topic == null) {
             return;
         }
         view.showJoined(model.join(name, topic));
     }
 
-    /** Re-prompts until the model accepts the field. Returns null on cancel or end of input. */
-    private String promptUntilValid(String prompt, boolean isName) {
+    /** Asks for a name and removes that student's spot. "Not in line" reaches showError. */
+    private void doLeave() {
+        String name = promptUntilValid("Name (or cancel): ", true, "Leave cancelled.");
+        if (name == null) {
+            return;
+        }
+        model.leave(name);
+        view.showInfo("You left the line.");
+    }
+
+    /**
+     * Re-prompts until the model accepts the field. Shows cancelMessage and
+     * returns null on cancel or end of input.
+     */
+    private String promptUntilValid(String prompt, boolean isName, String cancelMessage) {
         while (true) {
             String raw = view.readLine(prompt);
             if (raw == null || raw.trim().equalsIgnoreCase("cancel")) {
-                view.showInfo("Join cancelled.");
+                view.showInfo(cancelMessage);
                 return null;
             }
             try {

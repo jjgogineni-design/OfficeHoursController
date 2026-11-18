@@ -95,6 +95,7 @@ public class ConsoleView implements OfficeHoursView {
         out.println("Commands:");
         out.println("  join     Get in line");
         out.println("  line     See who is waiting");
+        out.println("  leave    Give up your spot in line");
         out.println("  ta       Enter TA mode (PIN required)");
         out.println("  help     Show this list");
         out.println("  quit     End the session");

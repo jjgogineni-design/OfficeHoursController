@@ -125,6 +125,65 @@ class OfficeHoursControllerTest {
         assertDoesNotThrow(() -> run(""));
     }
 
+    // ---- leave (the Deliverable 4 change feature) ----
+
+    @Test
+    void leaveReachesTheModelAndLineShowsEveryoneMovedUp() {
+        String out = run("join\nAnn\na\njoin\nBen\nb\njoin\nCy\nc\n"
+                + "leave\nben\nline\nquit\n");
+        assertTrue(out.contains("You left the line."));
+        assertTrue(out.contains("1. Ann (a)\n2. Cy (c)\n"));
+        assertEquals(2, model.lineSize());
+        assertEquals(-1, model.getPosition("Ben"));
+    }
+
+    @Test
+    void leaveWhenNotInLineShowsMessageAndKeepsRunning() {
+        String out = run("join\nAnn\na\nleave\nZed\nline\nquit\n");
+        assertTrue(out.contains("You're not in line."));
+        assertTrue(out.contains("1. Ann (a)"));
+        assertTrue(out.contains("Session ended."));
+        assertEquals(1, model.lineSize());
+    }
+
+    @Test
+    void leaveRepromptsOnBadNamesThenWorks() {
+        String out = run("join\nAnn\na\nleave\n   \nAnn123\n" + "a".repeat(10_000) + "\n  ANN \nquit\n");
+        assertTrue(out.contains("Name can't be blank."));
+        assertTrue(out.contains("Names can only use letters, spaces, hyphens, and apostrophes."));
+        assertTrue(out.contains("Name must be 30 characters or fewer."));
+        assertTrue(out.contains("You left the line."));
+        assertTrue(model.isEmpty());
+    }
+
+    @Test
+    void cancelAtLeavePromptShowsLeaveMessageNotJoinMessage() {
+        String out = run("join\nAnn\na\nleave\ncancel\nquit\n");
+        assertTrue(out.contains("Leave cancelled."));
+        assertFalse(out.contains("Join cancelled."));
+        assertEquals(1, model.lineSize());
+    }
+
+    @Test
+    void endOfInputDuringLeaveIsHandled() {
+        assertDoesNotThrow(() -> run("join\nAnn\na\nleave\n"));
+        assertEquals(1, model.lineSize());
+    }
+
+    @Test
+    void leaveAppearsInHelp() {
+        String out = run("help\nquit\n");
+        assertTrue(out.contains("leave"));
+    }
+
+    @Test
+    void taCanRemoveANoShowThenCallsTheRightStudent() {
+        String out = run("join\nAnn\na\njoin\nBen\nb\nta\n2114\nleave\nAnn\nnext\nquit\n");
+        assertTrue(out.contains("You left the line."));
+        assertTrue(out.contains("Next up: Ben (b)"));
+        assertTrue(model.isEmpty());
+    }
+
     @Test
     void constructorRejectsNulls() {
         assertThrows(IllegalArgumentException.class, () -> new OfficeHoursController(null, null));
